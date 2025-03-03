@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main  # Runs this workflow when pushing to the main branch
-
+      
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -18,22 +18,22 @@ jobs:
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USERNAME }}
-          key: | 
+          key: |
             ${{ secrets.SSH_KEY }}
           script: |
             cd /var/www/mern_app/server
 
-            # Ensure the repository is up-to-date
+            # Pull latest changes
             git pull origin main
 
-            # Install dependencies
+            # Install dependencies (production-only)
             npm install --production
 
-            # Update the .env file
+            # Write .env from GitHub Secrets
             echo "MONGODB_URL=${{ secrets.MONGODB_URL }}" > .env
 
-            # Restart the backend with PM2
+            # Restart backend with PM2
             pm2 restart all
 
-            # Optional: Save PM2 process list so it auto-starts on reboot
+            # Save PM2 process list to auto-start on reboot
             pm2 save
