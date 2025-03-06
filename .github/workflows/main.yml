@@ -29,9 +29,6 @@ jobs:
             # Install dependencies (production-only)
             npm install --production
 
-            # Write .env from GitHub Secrets
-            echo "MONGODB_URL=${{ secrets.MONGODB_URL }}" > .env
-
             # Restart backend with PM2
             pm2 restart all
 
