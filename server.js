@@ -1,56 +1,84 @@
+// Load Environment Variables
 require('dotenv').config();
 
-// requirements 
 const express = require('express');
-const bodyParser = require('body-parser');
+const connectDB = require('./config/db'); // Import the custom DB connection
 const cors = require('cors');
+
 const app = express();
 
-// Middleware setup
-app.use(cors());
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+// Enable CORS for all routes (Allow All Origins)
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
-app.use((req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'Origin, X-Requested-With, Content-Type, Accept, Authorization'
-  );
-  res.setHeader(
-    'Access-Control-Allow-Methods',
-    'GET, POST, PATCH, DELETE, OPTIONS'
-  );
-  next();
+// Middleware
+app.use(express.json()); // Ensure JSON requests are parsed correctly
+app.use(express.urlencoded({ extended: true })); // Allow URL-encoded data
+
+// Connect to MongoDB
+connectDB()
+  .then(() => console.log('Connected to MongoDB'))
+  .catch(err => console.error('DB Connection Error:', err));
+
+// =============================
+// Routes
+// =============================
+app.get('/', (req, res) => {
+    res.send("🚀 Server is up and running!");
 });
 
-// initialize database connection
-const uri = process.env.MONGODB_URI;
-console.log(uri)
-const mongoose = require("mongoose");
-mongoose.connect(uri)
-.then(() => console.log("Mongo DB connected"))
-.catch(err => console.log(err));
+// Load Routers
+app.use('/api/users', require('./routes/userRoutes'));
+app.use('/api/courses', require('./routes/courseRoutes'));
+app.use('/api/plans', require('./routes/planOfStudyRoutes'));
+app.use('/api/foundation-exams', require('./routes/foundationExamRoutes'));
+app.use('/api/degree-requirements', require('./routes/degreeRequirementRoutes'));
+app.use('/api/areas', require('./routes/areaRoutes'));
 
-// initialize api
-var api = require('./api.js')
-api.setApp( app, mongoose );
+// =============================
+// Seed Routes Setup
+// =============================
+// Place seed routes last to avoid conflicts
+app.use('/api', require('./routes/seedRoutes'));
 
-app.use((req, res, next) => {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader(
-        'Access-Control-Allow-Headers',
-        'Origin, X-Requested-With, Content-Type, Accept, Authorization'
-    );
-    res.setHeader(
-        'Access-Control-Allow-Methods',
-        'GET, POST, PATCH, DELETE, OPTIONS'
-    );
+// =============================
+// Error Handling
+// =============================
 
-    next();
+// 404 Error Handler (Catch-all for unhandled routes)
+app.use((req, res) => {
+    res.status(404).json({ error: 'Route not found' });
 });
 
-// start Node + Express server on port 5000
-app.listen(5000, '0.0.0.0', () => {
-    console.log("Server is running on port 5000")
-}); 
+// General Error Handler
+app.use((err, req, res, next) => {
+    console.error('Error:', err.stack);
+    res.status(500).json({ error: 'Internal Server Error' });
+});
+
+// =============================
+// Debug: List All Registered Routes
+// =============================
+console.log("🔍 Registered Routes:");
+app._router.stack
+  .filter(middleware => middleware.route || (middleware.name === 'router' && middleware.handle.stack))
+  .forEach(middleware => {
+      if (middleware.route) {
+          console.log(`  ${Object.keys(middleware.route.methods).join(', ').toUpperCase()} ${middleware.route.path}`);
+      } else if (middleware.handle.stack) {
+          middleware.handle.stack.forEach(handler => {
+              if (handler.route) {
+                  console.log(`  ${Object.keys(handler.route.methods).join(', ').toUpperCase()} ${handler.route.path}`);
+              }
+          });
+      }
+  });
+
+// =============================
+// Start the Server
+// =============================
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, '0.0.0.0', () => console.log(`🚀 Server running on port ${PORT}`));
