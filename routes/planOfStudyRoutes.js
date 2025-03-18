@@ -12,4 +12,15 @@ router.get("/available/:userId", getAvailableCourses);
 // Add a course to an existing plan of study (Validates Prerequisites)
 router.post('/add-course', addCourseToPlan);
 
+// Create a new Plan of Study: This enables the creation of a plan of study using a POST request
+router.post('/', async (req, res) => {
+    try {
+        const plan = new PlanOfStudy(req.body);
+        await plan.save();
+        res.status(201).json(plan);
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
 module.exports = router;
