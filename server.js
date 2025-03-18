@@ -63,11 +63,11 @@ app._router.stack
   .filter(middleware => middleware.route || (middleware.name === 'router' && middleware.handle.stack))
   .forEach(middleware => {
       if (middleware.route) {
-          console.log(`  ${Object.keys(middleware.route.methods).join(', ').toUpperCase()} ${middleware.route.path}`);
+          console.log(`Route:  ${Object.keys(middleware.route.methods).join(', ').toUpperCase()} ${middleware.route.path}`);
       } else if (middleware.handle.stack) {
           middleware.handle.stack.forEach(handler => {
               if (handler.route) {
-                  console.log(`  ${Object.keys(handler.route.methods).join(', ').toUpperCase()} ${handler.route.path}`);
+                  console.log(`Route:  ${Object.keys(handler.route.methods).join(', ').toUpperCase()} ${handler.route.path}`);
               }
           });
       }
