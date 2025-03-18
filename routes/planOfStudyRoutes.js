@@ -15,7 +15,14 @@ router.post('/add-course', addCourseToPlan);
 // Create a new Plan of Study: This enables the creation of a plan of study using a POST request
 router.post('/', async (req, res) => {
     try {
-        const plan = new PlanOfStudy(req.body);
+        const { studentId, semesters, totalCredits } = req.body;
+
+        const plan = new PlanOfStudy({
+            studentId,
+            semesters,
+            totalCredits
+        });
+
         await plan.save();
         res.status(201).json(plan);
     } catch (err) {
