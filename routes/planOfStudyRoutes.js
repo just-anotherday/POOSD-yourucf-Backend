@@ -16,6 +16,10 @@ router.post('/add-course', addCourseToPlan);
 router.post('/', async (req, res) => {
     try {
         const { studentId, semesters, totalCredits } = req.body;
+        
+       if (!studentId || !semesters || !totalCredits) {
+            return res.status(400).json({ error: "Missing required fields" });
+        }
 
         const plan = new PlanOfStudy({
             studentId,
@@ -28,6 +32,10 @@ router.post('/', async (req, res) => {
     } catch (err) {
         res.status(400).json({ error: err.message });
     }
+});
+
+router.get('/', (req, res) => {
+    res.status(200).json({ message: "Plan of Study API is working" });
 });
 
 module.exports = router;
