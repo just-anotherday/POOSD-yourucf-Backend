@@ -18,7 +18,8 @@ router.post('/', async (req, res) => {
         const { studentId, semesters, totalCredits } = req.body;
         
        if (!studentId || !semesters || !totalCredits) {
-            return res.status(400).json({ error: "Missing required fields" });
+          console.log("❌ Missing required fields");  
+          return res.status(400).json({ error: "Missing required fields" });
         }
 
         const plan = new PlanOfStudy({
@@ -28,8 +29,10 @@ router.post('/', async (req, res) => {
         });
 
         await plan.save();
+        console.log("✅ Plan of Study Created!");
         res.status(201).json(plan);
     } catch (err) {
+        console.error("❌ Error:", err);
         res.status(400).json({ error: err.message });
     }
 });
