@@ -1,77 +1,79 @@
 const PlanOfStudy = require('../models/PlanOfStudy');
-const User = require('../models/User');
-const Course = require('../models/Course');
-const DegreeRequirement = require('../models/DegreeRequirement');
+const Course = require("../models/Course");
 
-// Add Course to Plan of Study with Prerequisite & Foundation Exam Checking
+
 const addCourseToPlan = async (req, res) => {
     try {
-        const { userId, courseId, semester, year } = req.body;
+        const { userId, semester, courseId } = req.body;
 
-        // Fetch user, course, and degree requirement
-        const user = await User.findById(userId).populate('completedCourses');
-        const course = await Course.findById(courseId).populate('prerequisites');
-        const degreeRequirement = await DegreeRequirement.findById(user.degreeRequirementId);
+        // Find the user's Plan of Study
+        let plan = await PlanOfStudy.findOne({ studentId: userId });
 
-        if (!user || !course || !degreeRequirement) {
-            return res.status(404).json({ error: 'User, course, or degree requirement not found' });
+        if (!plan) {
+            return res.status(404).json({ error: "Plan of Study not found." });
         }
 
-        // Ensure course is part of degree requirement
-        if (!degreeRequirement.requiredCourses.includes(courseId) &&
-            !degreeRequirement.restrictedElectives.advancedCS.includes(courseId)) {
-            return res.status(400).json({ error: 'Course is not in your degree requirement' });
-        }
-
-        // Foundation Exam Enforcement: Students must pass `COT 3960` before 4000+ courses
-        if (!user.foundationExamPassed && parseInt(course.courseCode.match(/\d+/)[0]) >= 4000) {
-            return res.status(400).json({
-                error: `Cannot enroll in ${course.courseName} - must pass the Foundation Exam (COT 3960) first.`
+        // Add course to the semester
+        const semesterIndex = plan.semesters.findIndex(s => s.semester === semester);
+        if (semesterIndex !== -1) {
+            plan.semesters[semesterIndex].courses.push({ courseId, status: "Planned" });
+        } else {
+            plan.semesters.push({
+                semester,
+                year: new Date().getFullYear(),
+                courses: [{ courseId, status: "Planned" }]
             });
         }
 
-        // Check if prerequisites are met (including planned & completed courses)
-        const studentPlan = await PlanOfStudy.findOne({ studentId: userId });
-        const prerequisitesMet = validatePrerequisites(studentPlan, course, semester, year);
-
-        if (!prerequisitesMet) {
-            return res.status(400).json({
-                error: 'Prerequisite(s) not met for future enrollment',
-                unmetPrerequisites: course.prerequisites.map(p => p.courseCode)
-            });
-        }
-
-        // Add course to the correct semester/year
-        const updatedPlan = await PlanOfStudy.findOneAndUpdate(
-            { studentId: userId, "semesters.year": year, "semesters.semester": semester },
-            { $push: { "semesters.$.courses": { courseId, status: 'Planned' } } },
-            { new: true, upsert: true }
-        );
-
-        res.json({ message: 'Course added successfully', updatedPlan });
-
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+        await plan.save();
+        res.json(plan);
+    } catch (error) {
+        res.status(500).json({ error: "Error adding course to Plan of Study" });
     }
 };
 
-// Function: Validate Prerequisites Before Adding a Course
-function validatePrerequisites(studentPlan, newCourse, semester, year) {
-    let previousCourses = new Set();
+// Fetch User's Plan of Study
+const getUserPlanOfStudy = async (req, res) => {
+    try {
+        const userId = req.params.userId;
 
-    if (!studentPlan) return false; // No existing plan
+        // Find the user's Plan of Study
+        const planOfStudy = await PlanOfStudy.findOne({ studentId: userId }).populate("semesters.courses.courseId");
 
-    studentPlan.semesters.forEach(s => {
-        if (s.year < year || (s.year === year && s.semester < semester)) {
-            s.courses.forEach(course => previousCourses.add(course.courseId.toString()));
-        } else if (s.year === year && s.semester === semester) {
-            s.courses.forEach(course => {
-                if (course.status === 'Ongoing') previousCourses.add(course.courseId.toString());
+        if (!planOfStudy) {
+            return res.status(404).json({ message: "Plan of Study not found for user." });
+        }
+
+        res.json(planOfStudy);
+    } catch (error) {
+        res.status(500).json({ error: "Error fetching plan of study" });
+    }
+};
+
+// Fetch Available Courses (Excluding those already in Plan of Study)
+const getAvailableCourses = async (req, res) => {
+    try {
+        const userId = req.params.userId;
+
+        // Get all courses from Plan of Study
+        const planOfStudy = await PlanOfStudy.findOne({ studentId: userId });
+
+        const userCourseIds = new Set();
+        if (planOfStudy) {
+            planOfStudy.semesters.forEach(semester => {
+                semester.courses.forEach(course => {
+                    userCourseIds.add(course.courseId.toString());
+                });
             });
         }
-    });
 
-    return newCourse.prerequisites.every(prereq => previousCourses.has(prereq.toString()));
-}
+        // Fetch courses NOT in user's Plan of Study
+        const availableCourses = await Course.find({ _id: { $nin: Array.from(userCourseIds) } });
 
-module.exports = { addCourseToPlan };
+        res.json(availableCourses);
+    } catch (error) {
+        res.status(500).json({ error: "Error fetching available courses" });
+    }
+};
+
+module.exports = {addCourseToPlan, getUserPlanOfStudy, getAvailableCourses };

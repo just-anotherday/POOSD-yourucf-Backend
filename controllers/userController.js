@@ -1,65 +1,46 @@
 const User = require('../models/User');
 const PlanOfStudy = require('../models/PlanOfStudy');
-const FoundationExam = require('../models/FoundationExam');
 const bcrypt = require('bcryptjs'); //Uses bcryptjs to hash passwords before storing them in MongoDB.
 const jwt = require('jsonwebtoken'); //Generates a JWT token upon successful login.
 
 // Register User
 const registerUser = async (req, res) => {
     try {
-        console.log("Incoming Registration Request:", req.body); // Debugging
+        const { firstName, lastName, username, password, email } = req.body;
 
-        const { username, password, role, program, degreeRequirementId } = req.body;
-
-        console.log("Received degreeRequirementId:", degreeRequirementId); // Debugging
-
-        // Ensure degreeRequirementId is received
-        if (!degreeRequirementId) {
-            return res.status(400).json({ error: "degreeRequirementId is required in the request body." });
+        // Ensure all required fields are provided
+        if (!firstName || !lastName || !username || !password || !email) {
+            return res.status(400).json({ error: "All fields are required." });
         }
 
-        // Validate ObjectId format
-        const mongoose = require('mongoose');
-        if (!mongoose.Types.ObjectId.isValid(degreeRequirementId)) {
-            return res.status(400).json({ error: "Invalid degreeRequirementId format. Must be a valid ObjectId." });
-        }
-
-        console.log("degreeRequirementId is valid!"); // Debugging
-        // Check if Degree Requirement Exists
-        const degreeRequirement = await mongoose.model('DegreeRequirement').findById(degreeRequirementId);
-        if (!degreeRequirement) {
-            return res.status(404).json({ error: "Degree Requirement not found." });
-        }
-
-        // Check if user exists
-        const userExists = await User.findOne({ username });
+        // Check if the user already exists
+        const userExists = await User.findOne({ $or: [{ username }, { email }] });
         if (userExists) {
-            return res.status(400).json({ message: 'User already exists' });
+            return res.status(400).json({ error: 'Username or Email already in use.' });
         }
 
         // Hash password
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-        // Create user
-        const user = await User.create({
+        // Create user (isValid = false by default)
+        const newUser = await User.create({
+            firstName,
+            lastName,
             username,
             password: hashedPassword,
-            role,
-            program,
-            degreeRequirementId: new mongoose.Types.ObjectId(degreeRequirementId) // ✅ FIXED HERE
+            email,
+            isValid: false // User must verify email
         });
 
-        console.log("User successfully created:", user); // Debugging
+        // TODO: Send Verification Email (implement email service)
+        res.status(201).json({ message: "User registered. Please verify your email.", userId: newUser._id });
 
-        res.status(201).json(user);
     } catch (err) {
         console.error("Registration Error:", err);
         res.status(500).json({ error: err.message });
     }
 };
-
-
 
 
 // Login User
@@ -93,26 +74,17 @@ const loginUser = async (req, res) => {
     }
 };
 
-//Add readmission logic when a student applies for readmission
-const readmitUser = async (req, res) => {
+// Get User by ID
+const getUserById = async (req, res) => {
     try {
-        const user = await User.findById(req.params.id);
-        if (!user) {
-            return res.status(404).json({ error: 'User not found' });
-        }
+        const user = await User.findById(req.params.id).select('-password');
+        if (!user) return res.status(404).json({ error: 'User not found' });
 
-        if (user.checkReadmissionEligibility()) {
-            user.grantReadmission();
-            await user.save();
-            return res.json({ message: 'Student successfully readmitted' });
-        } else {
-            return res.status(400).json({ error: 'Student is not eligible for readmission yet' });
-        }
+        res.json(user);
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: 'Invalid User ID' });
     }
 };
-
 
 // Delete User & Clean Up Related Data
 const deleteUser = async (req, res) => {
@@ -125,10 +97,6 @@ const deleteUser = async (req, res) => {
 
         // Delete related records in other collections
         await PlanOfStudy.deleteMany({ studentId: userId }); // Remove user's plan of study
-        await FoundationExam.updateMany(
-            { "studentsAttempted.studentId": userId },
-            { $pull: { studentsAttempted: { studentId: userId } } } // Remove user from foundation exam records
-        );
 
         // Finally, delete the user
         await User.findByIdAndDelete(userId);
@@ -139,4 +107,4 @@ const deleteUser = async (req, res) => {
     }
 };
 
-module.exports = { registerUser, loginUser, readmitUser, deleteUser };
+module.exports = { registerUser, loginUser, getUserById, deleteUser };

@@ -34,10 +34,6 @@ app.get('/', (req, res) => {
 app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/courses', require('./routes/courseRoutes'));
 app.use('/api/plans', require('./routes/planOfStudyRoutes'));
-app.use('/api/foundation-exams', require('./routes/foundationExamRoutes'));
-app.use('/api/degree-requirements', require('./routes/degreeRequirementRoutes'));
-app.use('/api/areas', require('./routes/areaRoutes'));
-
 // =============================
 // Seed Routes Setup
 // =============================

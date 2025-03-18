@@ -8,8 +8,6 @@ const coursesSchema = new mongoose.Schema({
   creditHours: { type: Number, required: true },
   prerequisites: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Course' }],
   semestersOffered: [{ type: String, enum: ['Fall', 'Spring', 'Summer'] }],
-  area: { type: String, required: true },
-  requiredFor: [{ type: String }]
 });
 
 module.exports = mongoose.model('Course', coursesSchema);

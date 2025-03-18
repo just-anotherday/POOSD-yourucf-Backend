@@ -1,7 +1,6 @@
 const Course = require('../models/Course');
 const User = require('../models/User');
 const PlanOfStudy = require('../models/PlanOfStudy');
-const DegreeRequirement = require('../models/DegreeRequirement');
 
 // Get All Courses
 const getCourses = async (req, res) => {
@@ -42,12 +41,10 @@ const enrollInCourse = async (req, res) => {
         // Fetch user and course
         const user = await User.findById(userId);
         const course = await Course.findById(courseId).populate('prerequisites'); // Fetch prerequisites
-        const degreeRequirement = await DegreeRequirement.findById(user.degreeRequirementId);
         const plan = await PlanOfStudy.findOne({ studentId: userId });
 
         if (!user) return res.status(404).json({ error: 'User not found' });
         if (!course) return res.status(404).json({ error: 'Course not found' });
-        if (!degreeRequirement) return res.status(404).json({ error: 'Degree Requirement not found' });
         if (!plan) return res.status(400).json({ error: 'Plan of Study not found' });
 
         // Check if course is in the user's degree requirement
