@@ -76,4 +76,26 @@ const getAvailableCourses = async (req, res) => {
     }
 };
 
-module.exports = {addCourseToPlan, getUserPlanOfStudy, getAvailableCourses };
+const createPlanOfStudy = async (req, res) => {
+    try {
+        const { studentId, semesters, totalCredits } = req.body;
+
+        if (!studentId || !semesters || !totalCredits) {
+            return res.status(400).json({ error: "Missing required fields" });
+        }
+
+        const newPlan = new PlanOfStudy({
+            studentId,
+            semesters,
+            totalCredits
+        });
+
+        await newPlan.save();
+        res.status(201).json(newPlan);
+    } catch (error) {
+        res.status(500).json({ error: "Error creating Plan of Study" });
+    }
+};
+
+module.exports = { addCourseToPlan, getUserPlanOfStudy, getAvailableCourses, createPlanOfStudy };
+
