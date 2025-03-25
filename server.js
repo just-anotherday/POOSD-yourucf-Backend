@@ -30,8 +30,13 @@ app.get('/', (req, res) => {
     res.send("🚀 Server is up and running!");
 });
 
+// import routes
+const verifyEmailRoute = require('./routes/verifyEmail');
+
+
 // Load Routers
 app.use('/api/users', require('./routes/userRoutes'));
+app.use('/api', verifyEmailRoute);
 app.use('/api/courses', require('./routes/courseRoutes'));
 app.use('/api/plans', require('./routes/planOfStudyRoutes'));
 // =============================
@@ -63,11 +68,11 @@ app._router.stack
   .filter(middleware => middleware.route || (middleware.name === 'router' && middleware.handle.stack))
   .forEach(middleware => {
       if (middleware.route) {
-          console.log(`  ${Object.keys(middleware.route.methods).join(', ').toUpperCase()} ${middleware.route.path}`);
+          console.log(`Route:  ${Object.keys(middleware.route.methods).join(', ').toUpperCase()} ${middleware.route.path}`);
       } else if (middleware.handle.stack) {
           middleware.handle.stack.forEach(handler => {
               if (handler.route) {
-                  console.log(`  ${Object.keys(handler.route.methods).join(', ').toUpperCase()} ${handler.route.path}`);
+                  console.log(`Route:  ${Object.keys(handler.route.methods).join(', ').toUpperCase()} ${handler.route.path}`);
               }
           });
       }

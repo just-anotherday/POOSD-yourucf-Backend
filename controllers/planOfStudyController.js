@@ -53,27 +53,65 @@ const getUserPlanOfStudy = async (req, res) => {
 // Fetch Available Courses (Excluding those already in Plan of Study)
 const getAvailableCourses = async (req, res) => {
     try {
-        const userId = req.params.userId;
+        console.log("✅ Received request at /api/plans/available/:userId with userId:", req.params.userId);
 
-        // Get all courses from Plan of Study
+        const userId = req.params.userId;
         const planOfStudy = await PlanOfStudy.findOne({ studentId: userId });
 
-        const userCourseIds = new Set();
-        if (planOfStudy) {
-            planOfStudy.semesters.forEach(semester => {
-                semester.courses.forEach(course => {
-                    userCourseIds.add(course.courseId.toString());
-                });
-            });
+        console.log("🔍 Retrieved Plan of Study:", planOfStudy);
+
+        if (!planOfStudy) {
+            console.log("❌ No Plan of Study found for user:", userId);
+            return res.status(404).json({ error: "Plan of Study not found." });
         }
 
-        // Fetch courses NOT in user's Plan of Study
-        const availableCourses = await Course.find({ _id: { $nin: Array.from(userCourseIds) } });
+        // Extract course IDs already in the Plan of Study
+        const userCourseIds = new Set();
+        planOfStudy.semesters.forEach(semester => {
+            semester.courses.forEach(course => {
+                console.log("🔍 Found course in Plan of Study:", course);
+                if (course.courseId) {
+                    userCourseIds.add(course.courseId.toString());
+                }
+            });
+        });
 
+        console.log("🔍 Excluded course IDs (already in Plan of Study):", Array.from(userCourseIds));
+
+        // Fetch courses NOT in user's Plan of Study
+        const availableCourses = await Course.find({ courseCode: { $nin: Array.from(userCourseIds) } });
+
+        console.log("✅ Available Courses Retrieved:", availableCourses.length);
         res.json(availableCourses);
     } catch (error) {
-        res.status(500).json({ error: "Error fetching available courses" });
+        console.error("❌ Error fetching available courses:", error);
+        res.status(500).json({ error: "Error fetching available courses", details: error.message });
     }
 };
 
-module.exports = {addCourseToPlan, getUserPlanOfStudy, getAvailableCourses };
+
+
+
+const createPlanOfStudy = async (req, res) => {
+    try {
+        const { studentId, semesters, totalCredits } = req.body;
+
+        if (!studentId || !semesters || !totalCredits) {
+            return res.status(400).json({ error: "Missing required fields" });
+        }
+
+        const newPlan = new PlanOfStudy({
+            studentId,
+            semesters,
+            totalCredits
+        });
+
+        await newPlan.save();
+        res.status(201).json(newPlan);
+    } catch (error) {
+        res.status(500).json({ error: "Error creating Plan of Study" });
+    }
+};
+
+module.exports = { addCourseToPlan, getUserPlanOfStudy, getAvailableCourses, createPlanOfStudy };
+
