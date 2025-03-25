@@ -30,8 +30,13 @@ app.get('/', (req, res) => {
     res.send("🚀 Server is up and running!");
 });
 
+// import routes
+const verifyEmailRoute = require('./routes/verifyEmail');
+
+
 // Load Routers
 app.use('/api/users', require('./routes/userRoutes'));
+app.use('/api', verifyEmailRoute);
 app.use('/api/courses', require('./routes/courseRoutes'));
 app.use('/api/plans', require('./routes/planOfStudyRoutes'));
 // =============================

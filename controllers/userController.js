@@ -2,6 +2,7 @@ const User = require('../models/User');
 const PlanOfStudy = require('../models/PlanOfStudy');
 const bcrypt = require('bcryptjs'); //Uses bcryptjs to hash passwords before storing them in MongoDB.
 const jwt = require('jsonwebtoken'); //Generates a JWT token upon successful login.
+const { sendVerificationEmail } = require('../services/emailService');
 
 // Register User
 const registerUser = async (req, res) => {
@@ -33,9 +34,13 @@ const registerUser = async (req, res) => {
             isValid: false // User must verify email
         });
 
-        // TODO: Send Verification Email (implement email service)
-        res.status(201).json({ message: "User registered. Please verify your email.", userId: newUser._id });
+        // gen jwt token
+        const token = jwt.sign({ id: newUser._id.toString() }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        
+        // send verification email
+        await sendVerificationEmail(newUser.email, token);
 
+        res.status(201).json({ message: "User registered. Please verify your email.", userId: newUser._id });
     } catch (err) {
         console.error("Registration Error:", err);
         res.status(500).json({ error: err.message });

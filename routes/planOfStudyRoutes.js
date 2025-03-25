@@ -15,6 +15,6 @@ router.get("/available/:userId", getAvailableCourses);
 router.post('/add-course', addCourseToPlan);
 
 // Create a new Plan of Study: This enables the creation of a plan of study using a POST request
-router.post("/", createPlanOfStudy);
+router.post("/create", createPlanOfStudy);
 
 module.exports = router;
