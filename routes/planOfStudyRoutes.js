@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const PlanOfStudy = require('../models/PlanOfStudy'); 
-const { addCourseToPlan, getUserPlanOfStudy, getAvailableCourses, createPlanOfStudy, addSemester, deleteSemester, searchSemester } = require('../controllers/planOfStudyController');
+const { addCourseToPlan, getUserPlanOfStudy, getAvailableCourses, createPlanOfStudy, addSemester, deleteSemester, searchSemester, addCourseToSemester, removeCourseFromSemester, searchCoursesInPlan } = require('../controllers/planOfStudyController');
 
 console.log("✅ planOfStudyRoutes.js Loaded");
 
@@ -25,5 +25,14 @@ router.delete('/deleteSemester/:semesterId/user/:userId', deleteSemester);
 
 // Search for a semester with matching name, year, or both depending on mode
 router.post('/searchSemester', searchSemester);
+
+// Add course to semester
+router.post('/:userId/semesters/:semesterId/courses', addCourseToSemester);
+
+//Delete course from semester
+router.delete('/:userId/semesters/:semesterId/courses/:courseId', removeCourseFromSemester);
+
+// Search courses in a user's plan
+router.get('/:userId/search', searchCoursesInPlan);
 
 module.exports = router;

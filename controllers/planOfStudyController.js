@@ -274,5 +274,147 @@ const searchSemester = async (req, res) => {
 
 }
 
-module.exports = { addCourseToPlan, getUserPlanOfStudy, getAvailableCourses, createPlanOfStudy, addSemester, deleteSemester, searchSemester };
+const addCourseToSemester = async (req, res) => {
+    try {
+      const { userId, semesterId } = req.params;
+      const { courseId } = req.body;
+  
+      // 1. Find the Plan of Study
+      const plan = await PlanOfStudy.findOne({ studentId: userId });
+      if (!plan) return res.status(404).json({ error: "Plan not found." });
+  
+      // 2. Find the target semester
+      const semester = plan.semesters.id(semesterId);
+      if (!semester) return res.status(404).json({ error: "Semester not found." });
+  
+      // 3. Check if course already exists in this semester
+      const courseExists = semester.courses.some(
+        c => c.courseId.toString() === courseId
+      );
+  
+      if (courseExists) {
+        return res.status(400).json({ 
+          error: "Course already exists in this semester.",
+          solution: "Remove the existing entry first if you want to re-add it."
+        });
+      }
+  
+      // 4. Add the course if it doesn't exist
+      semester.courses.push({ courseId, status: "Planned" });
+      await plan.save();
+  
+      res.status(200).json({
+        message: "Course added successfully",
+        semester: semester
+      });
+  
+    } catch (error) {
+      res.status(500).json({ 
+        error: "Internal server error",
+        details: error.message 
+      });
+    }
+  };
 
+// Helper function
+function isSemesterBefore(a, b) {
+  const order = { 'Spring': 0, 'Summer': 1, 'Fall': 2 };
+  return order[a] < order[b];
+}
+
+const removeCourseFromSemester = async (req, res) => {
+    try {
+        const { userId, semesterId, courseId } = req.params;
+
+        // Find the Plan of Study
+        const plan = await PlanOfStudy.findOne({ studentId: userId });
+        if (!plan) {
+            return res.status(404).json({ error: "Plan of Study not found." });
+        }
+
+        // Find the semester
+        const semester = plan.semesters.id(semesterId);
+        if (!semester) {
+            return res.status(404).json({ error: "Semester not found." });
+        }
+
+        // Find and remove the course
+        const courseIndex = semester.courses.findIndex(
+            c => c.courseId.toString() === courseId
+        );
+        
+        if (courseIndex === -1) {
+            return res.status(404).json({ error: "Course not found in this semester." });
+        }
+
+        semester.courses.splice(courseIndex, 1);
+        await plan.save();
+
+        res.status(200).json({
+            message: "Course removed from semester successfully",
+            semester: semester
+        });
+    } catch (error) {
+        res.status(500).json({ 
+            error: "Error removing course from semester",
+            details: error.message 
+        });
+    }
+};
+
+const searchCoursesInPlan = async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const { query } = req.query;
+  
+      // 1. Get the user's plan with populated courses
+      const plan = await PlanOfStudy.findOne({ studentId: userId })
+        .populate({
+          path: 'semesters.courses.courseId',
+          select: 'courseCode courseName creditHours semestersOffered'
+        });
+  
+      if (!plan) {
+        return res.status(404).json({ error: "Plan not found." });
+      }
+  
+      // 2. Filter courses matching the search term
+      const results = [];
+      plan.semesters.forEach(semester => {
+        semester.courses.forEach(course => {
+          const { courseId, status } = course;
+          if (
+            courseId.courseCode.toLowerCase().includes(query.toLowerCase()) ||
+            courseId.courseName.toLowerCase().includes(query.toLowerCase())
+          ) {
+            results.push({
+              courseCode: courseId.courseCode,
+              courseName: courseId.courseName,
+              semester: semester.semester,
+              year: semester.year,
+              status,
+              creditHours: courseId.creditHours
+            });
+          }
+        });
+      });
+  
+      res.json({ results });
+  
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  };
+
+module.exports = { 
+    addCourseToPlan, 
+    getUserPlanOfStudy, 
+    getAvailableCourses, 
+    createPlanOfStudy, 
+    addSemester, 
+    deleteSemester, 
+    searchSemester,
+    addCourseToSemester,
+    removeCourseFromSemester,
+    searchCoursesInPlan
+}
